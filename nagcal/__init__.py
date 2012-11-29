@@ -143,7 +143,11 @@ class ShiftCalendar:
                 client = self.get_calendar_client()
                 shifts = []
                 event_feed = client.GetCalendarEventFeed(uri=self.calendar_url)
+                c = 0
                 for event in event_feed.entry:
+                    c += 1
+                    if c % 4 == 0:
+                        time.sleep(1)
                     shifts.append(
                             Shift(
                                 event.title.text.encode("utf-8"),
@@ -285,7 +289,7 @@ class Person:
 
     def update(self, client, **kwargs):
         """Search for Person.query on Google Contacts and set email and phone number from first match.
-        
+
         Will only sync once per instance."""
         phone_type_preference = ShiftCalendar.default_phone_type_preference
         if 'phone_type_preference' in kwargs:
