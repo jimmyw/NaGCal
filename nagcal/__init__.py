@@ -129,6 +129,54 @@ class ShiftCalendar:
         else:
             return date
 
+    def daterange(self, start_date, end_date):
+        for n in range(int ((end_date - start_date).days)):
+            yield start_date + datetime.timedelta(n)
+
+    def report(self, date_from, date_to):
+        """Download calendar and show shifts during specific time period.
+
+        Returns:
+            List with date and shift name."""
+
+        start_split = date_from.split("-")
+        end_split = date_to.split("-")
+        start_date = datetime.datetime(int(start_split[0]), int(start_split[1]), int(start_split[2]), (int(self.ade_offset_hours) + 3), 0, 0, 0, UTC())
+        end_date = datetime.datetime(int(end_split[0]), int(end_split[1]), int(end_split[2]), (int(self.ade_offset_hours) + 3), 0, 0, 0, UTC())
+        result = {}
+
+        try:
+            client = self.get_calendar_client()
+            event_feed = client.GetCalendarEventFeed(uri=self.calendar_url)
+
+            shifts = []
+            for event in event_feed.entry:
+                shifts.append(Shift(
+                    event.title.text.encode("utf-8"),
+                    parse_date(self.parse_shift_date(event.when[0].start)),
+                    parse_date(self.parse_shift_date(event.when[0].end))
+                ))
+
+            ordered_shifts = sorted(shifts, key=attrgetter('start'))
+            current_shift = None
+
+            for current_date in self.daterange(start_date, end_date):
+                current_shift = None
+                for shift in ordered_shifts:
+                    if current_date >= shift.start and current_date <= shift.end:
+                        current_shift = shift
+                        break
+                name = None
+                if current_shift:
+                    name = current_shift.title
+                result["%s" % current_date] = name
+
+            return result
+
+        except Exception, e:
+            logging.exception(e)
+            return {}
+
     def sync(self):
         """Download calendar and look up all contacts found in the calendar.
 

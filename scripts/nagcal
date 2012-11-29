@@ -6,6 +6,7 @@ import sys
 import logging
 import datetime
 import ConfigParser
+import re
 from nagcal import ShiftCalendar, UTC, Person
 from optparse import OptionParser
 
@@ -15,11 +16,18 @@ if __name__ == "__main__":
     SYNC = 2
     CURRENT = 3
     LAST = 4
+    REPORT = 5
 
     usage = "usage: %prog [options]"
     parser = OptionParser(usage=usage)
     parser.add_option("-s", "--sync", action="store_const", const=SYNC,
             dest="action", help="sync calendar and contacts from Google")
+    parser.add_option("-r", "--report", action="store_const", const=REPORT,
+            dest="action", help="View list of shifts")
+    parser.add_option("--from", action="store", type="string",
+            dest="from_date", help="give --report a from value")
+    parser.add_option("--to", action="store", type="string",
+            dest="to_date", help="give --report a to value")
     parser.add_option("-c", "--current", action="store_const", const=CURRENT,
             dest="action", help="use with --email or --phone")
     parser.add_option("-l", "--last-shift", action="store_const", const=LAST,
@@ -72,6 +80,36 @@ if __name__ == "__main__":
     if options.action != SYNC and not shift_calendar.credentials_ok():
         print >> sys.stderr, "Bad credentials, run --sync for initial setup!"
         sys.exit(os.EX_CONFIG)
+
+    if options.action == REPORT:
+        GOOGLE_CALENDAR_URL = config.get('nagcal', 'calendar_url')
+        if not shift_calendar.credentials_ok():
+            success = shift_calendar.setup_credentials()
+            if not success:
+                print >> sys.stderr, "OAuth setup failed, check settings!"
+                sys.exit(os.EX_CONFIG)
+        if GOOGLE_CALENDAR_URL is None or \
+                len(GOOGLE_CALENDAR_URL) == 0:
+            print "No calendar URL configured! " + \
+                    "Please set calendar_url in %s to " % CONFIGURATION_FILE + \
+                    "one of the URLs from the below list:\n"
+            calendars = []
+            calendar_feed = shift_calendar.get_calendar_feed()
+            for calendar in calendar_feed.entry:
+                print "%s\n%s\n%s\n" % (
+                        calendar.title.text,
+                        "-" * len(calendar.title.text),
+                        calendar.content.src)
+            print >> sys.stderr, "calendar_url is not set!"
+            sys.exit(os.EX_CONFIG)
+        date_regex = re.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}")
+        for arg in [options.from_date, options.to_date]:
+            if not arg or not date_regex.match(arg):
+                print >> sys.stderr, "--report requires --from and --to parameters in valid form, e.g. 2012-02-09"
+                sys.exit(os.EX_CONFIG)
+        result = shift_calendar.report(options.from_date, options.to_date)
+        for key in sorted(result.iterkeys()):
+            print "%s - %s" % (key[:10], result[key])
 
     if options.action == SYNC:
         GOOGLE_CALENDAR_URL = config.get('nagcal', 'calendar_url')
