@@ -24,7 +24,7 @@ class ShiftCalendar:
     default_scope = "https://www.google.com/calendar/feeds/ https://www.google.com/m8/feeds"
     default_phone_type_preference = ["mobile", "work"]
 
-    def __init__(self, calendar_url, calendar_file, contacts_file, oauth_settings, **kwargs):
+    def __init__(self, calendar_url, calendar_file, contacts_file, oauth_settings, ade_offset_hours, **kwargs):
         """Initialize a new ShiftCalendar
 
         Arguments:
@@ -61,6 +61,7 @@ class ShiftCalendar:
         self.have_synced = False
         self.shifts = None
         self.people = {}
+        self.ade_offset_hours = ade_offset_hours # ADE = all day event
 
     def credentials_ok(self):
         """Return True if stored OAuth credentials are present and valid, False otherwise."""
@@ -120,6 +121,14 @@ class ShiftCalendar:
                 oldest = age
         return oldest
 
+    def parse_shift_date(self, date):
+        if len(date) == 10:
+            date_split = date.split("-")
+            offset_hours = int(self.ade_offset_hours) if self.ade_offset_hours else 0
+            return "%s" % datetime.datetime(int(date_split[0]), int(date_split[1]), int(date_split[2]), offset_hours, 0, 0, 0, UTC())
+        else:
+            return date
+
     def sync(self):
         """Download calendar and look up all contacts found in the calendar.
 
@@ -151,8 +160,8 @@ class ShiftCalendar:
                     shifts.append(
                             Shift(
                                 event.title.text.encode("utf-8"),
-                                parse_date(event.when[0].start),
-                                parse_date(event.when[0].end)
+                                parse_date(self.parse_shift_date(event.when[0].start)),
+                                parse_date(self.parse_shift_date(event.when[0].end))
                             ))
                     # download contact info the first time we see this title,
                     # otherwise person will be grabbed from self.people

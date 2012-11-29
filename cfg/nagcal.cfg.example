@@ -6,6 +6,7 @@ contacts_file = /usr/local/nagios/var/nagcal.contacts.cache
 credentials_file = /usr/local/nagios/etc/nagcal.credentials
 log_file = /usr/local/nagios/var/nagcal.log
 phone_types = mobile,work
+ade_offset_hours = 9
 [oauth]
 user_agent = NaGCal
 display_name = NaGCal (Nagios On Call Calendar)
