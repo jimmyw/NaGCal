@@ -147,7 +147,11 @@ class ShiftCalendar:
 
         try:
             client = self.get_calendar_client()
-            event_feed = client.GetCalendarEventFeed(uri=self.calendar_url)
+            query = gdata.calendar.client.CalendarEventQuery()
+            query.start_min = date_from
+            query.start_max = date_to
+            query.max_results = 200
+            event_feed = client.GetCalendarEventFeed(uri=self.calendar_url, q=query)
 
             shifts = []
             for event in event_feed.entry:
