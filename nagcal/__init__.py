@@ -198,8 +198,13 @@ class ShiftCalendar:
         if not use_cache:
             try:
                 client = self.get_calendar_client()
+                query = gdata.calendar.client.CalendarEventQuery()
+                start_date = "%s" % (datetime.datetime.now(UTC()) - datetime.timedelta(days=5))
+                query.start_min = start_date[:10]
+                query.max_results = 50
+                event_feed = client.GetCalendarEventFeed(uri=self.calendar_url, q=query)
+
                 shifts = []
-                event_feed = client.GetCalendarEventFeed(uri=self.calendar_url)
                 c = 0
                 for event in event_feed.entry:
                     c += 1
